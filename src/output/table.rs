@@ -1,4 +1,5 @@
 use tabled::{Table, Tabled};
+use tabled::settings::Style;
 
 use crate::config::Project;
 use crate::error::Result;
@@ -6,15 +7,15 @@ use crate::output::Formatter;
 
 #[derive(Tabled)]
 struct ProjectRow {
-    #[tabled(rename = "Name")]
+    #[tabled(rename = "NAME")]
     name: String,
-    #[tabled(rename = "Description")]
+    #[tabled(rename = "DESCRIPTION")]
     description: String,
-    #[tabled(rename = "Hosting")]
+    #[tabled(rename = "HOSTING")]
     hosting: String,
-    #[tabled(rename = "Worktree")]
+    #[tabled(rename = "WORKTREE")]
     worktree: String,
-    #[tabled(rename = "Path")]
+    #[tabled(rename = "PATH")]
     path: String,
 }
 
@@ -37,7 +38,9 @@ impl Formatter for TableFormatter {
             })
             .collect();
 
-        let table = Table::new(rows).to_string();
+        let table = Table::new(rows)
+            .with(Style::empty())
+            .to_string();
         Ok(table)
     }
 }
