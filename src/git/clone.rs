@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::error::Result;
 
-pub fn clone_repository(url: &str, path: &Path, is_worktree: bool) -> Result<()> {
+pub fn clone_repository(url: &str, path: &Path, is_worktree: bool) -> Result<Option<String>> {
     if is_worktree {
         let default_branch = detect_default_branch(url)?;
         let worktree_path = path.join(&default_branch);
@@ -37,6 +37,8 @@ pub fn clone_repository(url: &str, path: &Path, is_worktree: bool) -> Result<()>
 
         builder.clone(url, &worktree_path)?;
         println!();
+
+        Ok(Some(default_branch))
     } else {
         std::fs::create_dir_all(path)?;
 
@@ -67,9 +69,9 @@ pub fn clone_repository(url: &str, path: &Path, is_worktree: bool) -> Result<()>
 
         builder.clone(url, path)?;
         println!();
-    }
 
-    Ok(())
+        Ok(None)
+    }
 }
 
 fn detect_default_branch(url: &str) -> Result<String> {

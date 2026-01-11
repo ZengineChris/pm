@@ -29,6 +29,8 @@ pub struct Project {
     pub description: Option<String>,
     pub repository_url: Option<String>,
     pub is_worktree: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub worktree_branch: Option<String>,
     pub hosting: String,
     pub local_path: String,
     pub created_at: DateTime<Utc>,
@@ -138,6 +140,7 @@ impl Project {
             description: None,
             repository_url: None,
             is_worktree: false,
+            worktree_branch: None,
             hosting,
             local_path,
             created_at: now,
@@ -147,5 +150,37 @@ impl Project {
 
     pub fn update_timestamp(&mut self) {
         self.last_updated = Utc::now();
+    }
+
+    /// Get the actual filesystem path to the git repository.
+    /// For worktree projects, this returns the path to the branch subdirectory.
+    /// For regular projects, this returns the local_path as-is.
+    pub fn get_repo_path(&self) -> String {
+        if self.is_worktree {
+            if let Some(ref branch) = self.worktree_branch {
+                // Append the branch name to local_path
+                let path = std::path::Path::new(&self.local_path).join(branch);
+                path.to_string_lossy().to_string()
+            } else {
+                // Fallback: scan for subdirectories with .git if branch name not stored
+                // This handles legacy projects created before worktree_branch was added
+                if let Ok(entries) = std::fs::read_dir(&self.local_path) {
+                    for entry in entries.flatten() {
+                        if let Ok(file_type) = entry.file_type() {
+                            if file_type.is_dir() {
+                                let subdir = entry.path();
+                                if subdir.join(".git").exists() {
+                                    return subdir.to_string_lossy().to_string();
+                                }
+                            }
+                        }
+                    }
+                }
+                // If no subdirectory with .git found, return local_path
+                self.local_path.clone()
+            }
+        } else {
+            self.local_path.clone()
+        }
     }
 }

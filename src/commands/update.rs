@@ -30,9 +30,9 @@ pub fn execute(args: &UpdateArgs, cli: &Cli) -> Result<()> {
     let mut error_count = 0;
 
     for project in projects {
-        let path = expand_path(&project.local_path)?;
+        let repo_path = expand_path(&project.get_repo_path())?;
 
-        if !path.exists() {
+        if !repo_path.exists() {
             if !cli.quiet {
                 println!(
                     "{} {} - skipped (not cloned)",
@@ -58,7 +58,7 @@ pub fn execute(args: &UpdateArgs, cli: &Cli) -> Result<()> {
             println!("{} Updating {}...", "→".blue(), project.name.cyan());
         }
 
-        match update_repository(&path) {
+        match update_repository(&repo_path) {
             Ok(_) => {
                 if !cli.quiet {
                     println!(

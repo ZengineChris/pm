@@ -10,7 +10,7 @@ pub fn execute(args: NavigateArgs) -> Result<()> {
         .find_project(&args.name)
         .ok_or_else(|| ProjectError::NotFound(args.name.clone()))?;
 
-    let expanded_path = expand_path(&project.local_path)?;
+    let expanded_path = expand_path(&project.get_repo_path())?;
 
     println!("cd {}", expanded_path.display());
 

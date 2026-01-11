@@ -18,13 +18,15 @@ pub fn execute(args: &CreateArgs, cli: &Cli) -> Result<()> {
         "custom".to_string()
     };
 
-    let mut local_path = compute_project_path(
+    let local_path = compute_project_path(
         &config,
         &hosting,
         args.repo.as_deref(),
         args.path.as_deref(),
         args.worktree,
     )?;
+
+    let mut worktree_branch = None;
 
     if args.clone {
         if let Some(ref repo_url) = args.repo {
@@ -34,16 +36,7 @@ pub fn execute(args: &CreateArgs, cli: &Cli) -> Result<()> {
 
             let expanded_path = expand_path(&local_path)?;
 
-            if args.worktree {
-                let default_branch = detect_default_branch_for_worktree(repo_url)?;
-                let worktree_path = expanded_path
-                    .join(&default_branch)
-                    .to_string_lossy()
-                    .to_string();
-                local_path = worktree_path;
-            }
-
-            clone_repository(repo_url, &expanded_path, args.worktree)?;
+            worktree_branch = clone_repository(repo_url, &expanded_path, args.worktree)?;
 
             if !cli.quiet {
                 println!("{} Repository cloned", "✓".green().bold());
@@ -60,6 +53,7 @@ pub fn execute(args: &CreateArgs, cli: &Cli) -> Result<()> {
     project.description = args.description.clone();
     project.repository_url = args.repo.clone();
     project.is_worktree = args.worktree;
+    project.worktree_branch = worktree_branch;
 
     config.add_project(project)?;
     config.save()?;
@@ -75,22 +69,4 @@ pub fn execute(args: &CreateArgs, cli: &Cli) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn detect_default_branch_for_worktree(url: &str) -> Result<String> {
-    let mut remote = git2::Remote::create_detached(url)?;
-    let connection = remote.connect_auth(git2::Direction::Fetch, None, None)?;
-
-    let default_branch = connection
-        .default_branch()?
-        .as_str()
-        .ok_or_else(|| git2::Error::from_str("Could not determine default branch"))?
-        .to_string();
-
-    let branch_name = default_branch
-        .strip_prefix("refs/heads/")
-        .unwrap_or(&default_branch)
-        .to_string();
-
-    Ok(branch_name)
 }

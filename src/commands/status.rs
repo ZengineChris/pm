@@ -37,9 +37,9 @@ pub fn execute(args: &StatusArgs, cli: &Cli) -> Result<()> {
     let mut rows = Vec::new();
 
     for project in projects {
-        let path = expand_path(&project.local_path)?;
+        let repo_path = expand_path(&project.get_repo_path())?;
 
-        if !path.exists() {
+        if !repo_path.exists() {
             rows.push(StatusRow {
                 name: project.name.clone(),
                 status: "Not cloned".yellow().to_string(),
@@ -50,7 +50,7 @@ pub fn execute(args: &StatusArgs, cli: &Cli) -> Result<()> {
             continue;
         }
 
-        match get_repository_status(&path) {
+        match get_repository_status(&repo_path) {
             Ok(status) => {
                 let status_str = if status.has_changes {
                     "Dirty".red().to_string()
