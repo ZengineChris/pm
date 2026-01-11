@@ -22,14 +22,7 @@ pub fn compute_project_path(
     let base_path = expand_path(&hosting_config.base_path)?;
 
     if let Some(url) = repo_url {
-        let parsed = Url::parse(url).map_err(|e| {
-            ProjectError::InvalidUrl(format!("Failed to parse URL '{}': {}", url, e))
-        })?;
-
-        let path_segments: Vec<&str> = parsed
-            .path_segments()
-            .ok_or_else(|| ProjectError::InvalidUrl("URL has no path segments".to_string()))?
-            .collect();
+        let path_segments = parse_git_url(url)?;
 
         if path_segments.is_empty() {
             return Err(
@@ -52,5 +45,48 @@ pub fn compute_project_path(
             "Cannot compute path without repository URL or custom path".to_string(),
         )
         .into())
+    }
+}
+
+/// Parse both HTTPS and SSH-style git URLs
+/// Supports:
+/// - HTTPS: https://github.com/user/repo.git
+/// - SSH: git@github.com:user/repo.git
+/// - SCP: user@host:path/to/repo.git
+fn parse_git_url(url: &str) -> Result<Vec<String>> {
+    // Try to detect SSH-style URL (git@host:path or user@host:path)
+    if url.contains('@') && url.contains(':') && !url.starts_with("http") {
+        // SSH format: git@github.com:user/repo.git or user@host:path/to/repo.git
+        let parts: Vec<&str> = url.split(':').collect();
+        if parts.len() < 2 {
+            return Err(ProjectError::InvalidUrl(
+                format!("Invalid SSH URL format: {}", url)
+            ).into());
+        }
+
+        // Extract path after the colon
+        let path = parts[1..].join(":");
+
+        // Split path by '/' to get segments
+        let segments: Vec<String> = path
+            .split('/')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .collect();
+
+        Ok(segments)
+    } else {
+        // Try to parse as standard HTTPS URL
+        let parsed = Url::parse(url).map_err(|e| {
+            ProjectError::InvalidUrl(format!("Failed to parse URL '{}': {}", url, e))
+        })?;
+
+        let segments: Vec<String> = parsed
+            .path_segments()
+            .ok_or_else(|| ProjectError::InvalidUrl("URL has no path segments".to_string()))?
+            .map(|s| s.to_string())
+            .collect();
+
+        Ok(segments)
     }
 }
